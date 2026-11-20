@@ -14,6 +14,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -65,6 +69,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -197,7 +202,7 @@ private val TABS = listOf(
 /** Where the app can jump to from anywhere (quick actions on Home open More pages). */
 class Nav(val tab: Int, val go: (tab: Int, page: String) -> Unit)
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun HomeScreen(vm: MainViewModel, snack: SnackbarHostState) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -207,6 +212,7 @@ private fun HomeScreen(vm: MainViewModel, snack: SnackbarHostState) {
     if (tab != 0) BackHandler { tab = 0; page = "" }
 
     val cs = MaterialTheme.colorScheme
+    val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val title = vm.routers.firstOrNull { it.id == vm.activeId }?.name ?: vm.found?.model ?: "My router"
     Scaffold(
         containerColor = cs.background,
@@ -243,7 +249,8 @@ private fun HomeScreen(vm: MainViewModel, snack: SnackbarHostState) {
             }
         },
         bottomBar = {
-            NavigationBar(containerColor = cs.surfaceContainer, tonalElevation = 0.dp) {
+            // Hide the tabs while typing so the keyboard has room and does not cover the field.
+            if (!imeOpen) NavigationBar(containerColor = cs.surfaceContainer, tonalElevation = 0.dp) {
                 TABS.forEachIndexed { i, t ->
                     NavigationBarItem(
                         selected = tab == i, onClick = { tab = i; page = "" },
@@ -255,7 +262,8 @@ private fun HomeScreen(vm: MainViewModel, snack: SnackbarHostState) {
             }
         },
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
+        // imePadding shrinks the page above the keyboard, so the focused field scrolls into view.
+        Box(Modifier.padding(pad).consumeWindowInsets(pad).imePadding().fillMaxSize()) {
             AnimatedContent(targetState = tab, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "tab") { t ->
                 when (t) {
                     0 -> StatusTab(vm, nav)
