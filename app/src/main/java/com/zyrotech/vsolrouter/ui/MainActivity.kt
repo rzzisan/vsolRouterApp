@@ -236,7 +236,7 @@ private fun HomeScreen(vm: MainViewModel, snack: SnackbarHostState) {
                 )
                 // Always reserve the bar's height so content does not jump when loading starts.
                 Box(Modifier.fillMaxWidth().height(3.dp)) {
-                    AnimatedVisibility(vm.busy) {
+                    androidx.compose.animation.AnimatedVisibility(visible = vm.busy) {
                         LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp), trackColor = cs.background)
                     }
                 }
