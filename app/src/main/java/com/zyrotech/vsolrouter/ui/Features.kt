@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.QrCode2
 import androidx.compose.material.icons.rounded.Router
@@ -119,7 +121,8 @@ fun GuestWifiCard(vm: MainViewModel, onQr: (String, String) -> Unit) {
     val g = vm.guest
     if (!g.supported) {
         EmptyState(if (vm.busy) "Loading…" else "Guest Wi-Fi not available",
-            if (vm.busy) "Reading the router." else "This router did not show a guest network page. Tap refresh to try again.")
+            if (vm.busy) "Reading the router." else "This router did not show a guest network page. Tap refresh to try again.",
+            Icons.Rounded.Groups)
     } else GuestWifiCardInner(vm, onQr)
 }
 
@@ -130,36 +133,28 @@ private fun GuestWifiCardInner(vm: MainViewModel, onQr: (String, String) -> Unit
     var name by remember(g) { mutableStateOf(g.ssid.ifBlank { "Guest" }) }
     var pass by remember(g) { mutableStateOf(g.password) }
     val valid = !on || (RouterApi.isValidSsid(name) && RouterApi.isValidPsk(pass))
-    ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconBadge(Icons.Rounded.Groups, MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Guest Wi-Fi", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("A separate network for visitors (2.4 GHz). Guests cannot see each other.",
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(checked = on, onCheckedChange = { on = it })
-            }
+    AppCard {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            CardHeader(
+                Icons.Rounded.Groups, "Guest Wi-Fi",
+                "A separate 2.4 GHz network for visitors. Guests cannot see each other.",
+                tint = MaterialTheme.colorScheme.tertiary,
+            ) { Switch(checked = on, onCheckedChange = { on = it }) }
             if (on) {
-                OutlinedTextField(name, { name = it.trim() }, label = { Text("Guest Wi-Fi name") }, singleLine = true,
-                    leadingIcon = { Icon(Icons.Rounded.Wifi, null) }, shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.fillMaxWidth(), isError = !RouterApi.isValidSsid(name))
-                OutlinedTextField(pass, { pass = it }, label = { Text("Guest password (8-63)") }, singleLine = true,
-                    leadingIcon = { Icon(Icons.Rounded.Key, null) }, shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.fillMaxWidth(), isError = pass.isNotEmpty() && !RouterApi.isValidPsk(pass))
+                AppField(name, { name = it.trim() }, "Guest Wi-Fi name", icon = Icons.Rounded.Wifi, isError = !RouterApi.isValidSsid(name))
+                PasswordField(pass, { pass = it }, "Guest password", icon = Icons.Rounded.Key,
+                    isError = pass.isNotEmpty() && !RouterApi.isValidPsk(pass), supporting = "8 to 63 characters.")
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(
-                    onClick = { vm.saveGuest(on, name, pass) },
-                    enabled = !vm.busy && valid && (on != g.enabled || name != g.ssid || pass != g.password),
-                    shape = MaterialTheme.shapes.small, modifier = Modifier.weight(1f),
-                ) { Text("Save guest Wi-Fi") }
-                if (g.enabled && g.ssid.isNotBlank()) {
-                    OutlinedButton(onClick = { onQr(g.ssid, g.password) }, shape = MaterialTheme.shapes.small) {
-                        Icon(Icons.Rounded.QrCode2, null); Spacer(Modifier.width(6.dp)); Text("QR")
-                    }
+            PrimaryButton(
+                "Save guest Wi-Fi", { vm.saveGuest(on, name, pass) },
+                enabled = !vm.busy && valid && (on != g.enabled || name != g.ssid || pass != g.password),
+            )
+            if (g.enabled && g.ssid.isNotBlank()) {
+                OutlinedButton(
+                    onClick = { onQr(g.ssid, g.password) }, shape = MaterialTheme.shapes.small,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                ) {
+                    Icon(Icons.Rounded.QrCode2, null); Spacer(Modifier.width(8.dp)); Text("Show QR code for guests")
                 }
             }
         }
@@ -177,6 +172,7 @@ fun speedSummary(rules: List<SpeedLimit>): String? {
     return listOfNotNull(d, u).joinToString("  ")
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SpeedLimitDialog(vm: MainViewModel, d: Device, onDismiss: () -> Unit) {
     val current = vm.speedLimits.orEmpty().filter { it.ip == d.ip }
@@ -191,12 +187,16 @@ fun SpeedLimitDialog(vm: MainViewModel, d: Device, onDismiss: () -> Unit) {
         title = { Text("Speed limit · ${d.name ?: d.ip ?: d.mac}") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(down, { down = it }, label = { Text("Download limit (Mbps)") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.fillMaxWidth(), isError = kbps(down) == null)
-                OutlinedTextField(up, { up = it }, label = { Text("Upload limit (Mbps)") }, singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.fillMaxWidth(), isError = kbps(up) == null)
+                Text("Quick pick (download)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    for (m in listOf("1", "2", "5", "10", "20")) {
+                        FilterChip(selected = down == m, onClick = { down = m }, label = { Text("$m Mbps") })
+                    }
+                }
+                AppField(down, { down = it }, "Download limit (Mbps)", isError = kbps(down) == null,
+                    keyboard = KeyboardOptions(keyboardType = KeyboardType.Decimal), icon = Icons.Rounded.Speed)
+                AppField(up, { up = it }, "Upload limit (Mbps)", isError = kbps(up) == null,
+                    keyboard = KeyboardOptions(keyboardType = KeyboardType.Decimal), icon = Icons.Rounded.Speed)
                 Text("Blank = no limit. The router uses steps of 0.5 Mbps. The limit follows the device's IP " +
                     "(${d.ip ?: "none"}); if the router gives it a new IP later, set it again.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -258,11 +258,14 @@ fun ScheduleDialog(vm: MainViewModel, d: Device, onDismiss: () -> Unit) {
                         FilterChip(selected = i in days, onClick = { days = if (i in days) days - i else days + i }, label = { Text(n) })
                     }
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    TextButton(onClick = { days = (0..6).toSet() }) { Text("Every day") }
+                    TextButton(onClick = { days = (0..4).toSet() }) { Text("Mon-Fri") }
+                    TextButton(onClick = { days = setOf(5, 6) }) { Text("Weekend") }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(from, { from = it }, label = { Text("From") }, singleLine = true, placeholder = { Text("06:00") },
-                        shape = MaterialTheme.shapes.small, modifier = Modifier.weight(1f), isError = f == null)
-                    OutlinedTextField(to, { to = it }, label = { Text("To") }, singleLine = true, placeholder = { Text("22:00") },
-                        shape = MaterialTheme.shapes.small, modifier = Modifier.weight(1f), isError = t == null || (f != null && t <= f))
+                    AppField(from, { from = it }, "From", Modifier.weight(1f), placeholder = "06:00", isError = f == null)
+                    AppField(to, { to = it }, "To", Modifier.weight(1f), placeholder = "22:00", isError = t == null || (f != null && t <= f))
                 }
                 Text("Uses the router's clock (24-hour time). The router must have the correct time from the internet.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -278,45 +281,69 @@ fun ScheduleDialog(vm: MainViewModel, d: Device, onDismiss: () -> Unit) {
     )
 }
 
-// ------------------------------------------------------------------ tools cards
+// ------------------------------------------------------------------ tools pages
 
 @Composable
 fun WebsiteBlockCard(vm: MainViewModel) {
     val st = vm.sites
     var url by remember { mutableStateOf("") }
-    ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconBadge(Icons.Rounded.Language, Bad.copy(alpha = 0.15f), Bad)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Block websites", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("For every device on this router.", style = MaterialTheme.typography.bodySmall,
+    AppCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CardHeader(Icons.Rounded.Language, "Blocked websites", "For every device on this router.", tint = Bad)
+            if (st == null) {
+                InfoNote(if (vm.busy) "Reading the router…" else "Could not read the router's website filter.", color = Warn)
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppField(url, { url = it.trim() }, "Website", Modifier.weight(1f), placeholder = "e.g. facebook.com",
+                        keyboard = KeyboardOptions(keyboardType = KeyboardType.Uri))
+                    Spacer(Modifier.width(8.dp))
+                    FilledTonalButton(
+                        onClick = { vm.blockSite(url); url = "" }, enabled = !vm.busy && url.length >= 3,
+                        modifier = Modifier.height(54.dp), shape = MaterialTheme.shapes.small,
+                    ) { Text("Block") }
+                }
+                if (st.sites.isEmpty()) {
+                    Text("No blocked websites yet.", style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-            }
-            if (st == null) {
-                Text("Could not read the router's website filter.", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-            for (s in st.sites) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(s, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    IconButton(onClick = { vm.unblockSite(s) }, enabled = !vm.busy) { Icon(Icons.Rounded.Close, "Unblock $s") }
+                for (s in st.sites) {
+                    Row(
+                        Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(start = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Rounded.Language, null, tint = Bad, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(s, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        IconButton(onClick = { vm.unblockSite(s) }, enabled = !vm.busy) { Icon(Icons.Rounded.Close, "Unblock $s") }
+                    }
                 }
+                Text("Works for plain web addresses. Some HTTPS sites and apps may still open.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (st.sites.isEmpty()) Text("No blocked websites.", style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(url, { url = it.trim() }, label = { Text("e.g. facebook.com") }, singleLine = true,
-                    shape = MaterialTheme.shapes.small, modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri))
-                Spacer(Modifier.width(8.dp))
-                FilledTonalButton(onClick = { vm.blockSite(url); url = "" }, enabled = !vm.busy && url.length >= 3) { Text("Block") }
-            }
-            Text("Works for plain web addresses. Some HTTPS sites and apps may still open.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+        }
+    }
+}
+
+@Composable
+fun AdminPasswordCard(vm: MainViewModel) {
+    var old by remember { mutableStateOf("") }
+    var new1 by remember { mutableStateOf("") }
+    var new2 by remember { mutableStateOf("") }
+    AppCard {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CardHeader(Icons.Rounded.Lock, "Router admin password", "Used to sign in to the router. The app saves the new one.")
+            PasswordField(old, { old = it }, "Current password")
+            PasswordField(new1, { new1 = it }, "New password", isError = new1.isNotEmpty() && new1.length !in 6..32,
+                supporting = "6 to 32 characters.")
+            PasswordField(new2, { new2 = it }, "Repeat new password", isError = new2.isNotEmpty() && new1 != new2,
+                supporting = if (new2.isNotEmpty() && new1 != new2) "Passwords do not match." else null)
+            PrimaryButton(
+                "Change password",
+                { vm.changeAdminPassword(old, new1); old = ""; new1 = ""; new2 = "" },
+                enabled = !vm.busy && old.isNotEmpty() && new1.length in 6..32 && new1 == new2,
+                icon = Icons.Rounded.Lock,
+            )
         }
     }
 }
@@ -324,6 +351,7 @@ fun WebsiteBlockCard(vm: MainViewModel) {
 @Composable
 fun RouterLoginCard(vm: MainViewModel) {
     if (vm.loginTimeout != null || vm.maxLogins != null) RouterLoginCardInner(vm)
+    else EmptyState(if (vm.busy) "Loading…" else "Not available", "This router did not show its login settings.", Icons.Rounded.Timer)
 }
 
 @Composable
@@ -331,77 +359,53 @@ private fun RouterLoginCardInner(vm: MainViewModel) {
     var timeout by remember(vm.loginTimeout) { mutableStateOf(vm.loginTimeout?.toString().orEmpty()) }
     var max by remember(vm.maxLogins) { mutableStateOf(vm.maxLogins?.toString().orEmpty()) }
     var confirmMax by remember { mutableStateOf<Int?>(null) }
-    ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    InfoNote(
+        "The router lets one device sign in at a time and keeps an unused login for the timeout below. " +
+            "A shorter timeout, or allowing 2+ logins, stops \"logged in on another device\" errors.",
+    )
+    if (vm.loginTimeout != null) {
+        val v = timeout.toIntOrNull()
+        AppCard {
+            CardHeader(Icons.Rounded.Timer, "Idle timeout", "Minutes before an unused login is released", tint = MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconBadge(Icons.Rounded.Timer, MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer)
-                Spacer(Modifier.width(12.dp))
-                Text("Router login", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                AppField(timeout, { timeout = it.filter(Char::isDigit) }, "Minutes (1-1440)", Modifier.weight(1f),
+                    keyboard = KeyboardOptions(keyboardType = KeyboardType.Number), isError = v == null || v !in 1..1440)
+                Spacer(Modifier.width(8.dp))
+                FilledTonalButton(
+                    onClick = { vm.saveLoginTimeout(v!!) }, modifier = Modifier.height(54.dp), shape = MaterialTheme.shapes.small,
+                    enabled = !vm.busy && v != null && v in 1..1440 && v != vm.loginTimeout,
+                ) { Text("Save") }
             }
-            Text("The router lets one device log in at a time and keeps an unused login for the timeout below. " +
-                "A shorter timeout, or allowing 2+ logins, stops \"logged in on another device\" errors.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (vm.loginTimeout != null) {
-                val v = timeout.toIntOrNull()
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(timeout, { timeout = it.filter(Char::isDigit) }, label = { Text("Idle timeout (minutes)") },
-                        singleLine = true, shape = MaterialTheme.shapes.small, modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), isError = v == null || v !in 1..1440)
-                    Spacer(Modifier.width(8.dp))
-                    FilledTonalButton(onClick = { vm.saveLoginTimeout(v!!) },
-                        enabled = !vm.busy && v != null && v in 1..1440 && v != vm.loginTimeout) { Text("Save") }
-                }
+        }
+    }
+    if (vm.maxLogins != null) {
+        val v = max.toIntOrNull()
+        AppCard {
+            CardHeader(Icons.Rounded.Groups, "Logins at once", "How many devices may be signed in together", tint = MaterialTheme.colorScheme.tertiary)
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppField(max, { max = it.filter(Char::isDigit) }, "Logins (1-10)", Modifier.weight(1f),
+                    keyboard = KeyboardOptions(keyboardType = KeyboardType.Number), isError = v == null || v !in 1..10)
+                Spacer(Modifier.width(8.dp))
+                FilledTonalButton(
+                    onClick = { confirmMax = v }, modifier = Modifier.height(54.dp), shape = MaterialTheme.shapes.small,
+                    enabled = !vm.busy && v != null && v in 1..10 && v != vm.maxLogins,
+                ) { Text("Save") }
             }
-            if (vm.maxLogins != null) {
-                val v = max.toIntOrNull()
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(max, { max = it.filter(Char::isDigit) }, label = { Text("Logins allowed at once (1-10)") },
-                        singleLine = true, shape = MaterialTheme.shapes.small, modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), isError = v == null || v !in 1..10)
-                    Spacer(Modifier.width(8.dp))
-                    FilledTonalButton(onClick = { confirmMax = v },
-                        enabled = !vm.busy && v != null && v in 1..10 && v != vm.maxLogins) { Text("Save") }
-                }
-            }
+            Spacer(Modifier.height(8.dp))
+            Text("Changing this reboots the router.", style = MaterialTheme.typography.bodySmall, color = Warn)
         }
     }
     confirmMax?.let { n ->
         AlertDialog(
             onDismissRequest = { confirmMax = null },
+            icon = { Icon(Icons.Rounded.Groups, null) },
             title = { Text("Allow $n login(s) at once?") },
             text = { Text("The router reboots to apply this. Internet and Wi-Fi drop for about 1-2 minutes.") },
             confirmButton = { TextButton(onClick = { confirmMax = null; vm.saveMaxLogins(n) }) { Text("Save and reboot") } },
             dismissButton = { TextButton(onClick = { confirmMax = null }) { Text("Cancel") } },
         )
-    }
-}
-
-@Composable
-fun AlertsCard(vm: MainViewModel) {
-    val ctx = LocalContext.current
-    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        vm.updateNotifyNew(granted)
-        if (!granted) vm.error = "Notifications are blocked for this app. Allow them in Android settings to get alerts."
-    }
-    ElevatedCard(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconBadge(Icons.Rounded.NotificationsActive, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("New device alerts", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("Get a notification when a device joins for the first time.",
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Switch(checked = vm.notifyNew, onCheckedChange = { on ->
-                    if (on && Build.VERSION.SDK_INT >= 33 && !Background.canNotify(ctx)) ask.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    else vm.updateNotifyNew(on)
-                })
-            }
-            Text("Checked about every 15 minutes while this phone is on the router's Wi-Fi. Each check logs in for a few " +
-                "seconds and logs out again. Home-screen widget: long-press the home screen → Widgets → VSOL Router.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }
 
@@ -415,32 +419,29 @@ fun SavedRouters(vm: MainViewModel) {
 @Composable
 private fun SavedRoutersInner(vm: MainViewModel) {
     var toRemove by remember { mutableStateOf<RouterProfile?>(null) }
-    val list = vm.routers
     val cs = MaterialTheme.colorScheme
-    Text("Saved routers", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = cs.primary)
-    for (r in list) {
-        val here = vm.found?.model != null && vm.found?.host == r.host
-        ElevatedCard(
-            Modifier.fillMaxWidth().clickable(enabled = !vm.busy && vm.loginWait == 0) { vm.tapSaved(r) },
-            shape = MaterialTheme.shapes.medium,
-        ) {
-            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconBadge(Icons.Rounded.Router, if (here) cs.primaryContainer else cs.surfaceVariant,
-                    if (here) cs.onPrimaryContainer else cs.onSurfaceVariant)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(r.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(listOfNotNull(r.model?.takeIf { it != r.name }, r.host).joinToString(" · "),
-                        style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
-                }
-                if (r.id == vm.activeId) StatusPill("Last used", Good)
-                IconButton(onClick = { toRemove = r }) { Icon(Icons.Rounded.Delete, "Remove ${r.name}", tint = cs.outline) }
+    SectionLabel("Saved routers")
+    SettingsGroup(
+        vm.routers.map<RouterProfile, @Composable () -> Unit> { r ->
+            {
+                val here = vm.found?.model != null && vm.found?.host == r.host
+                SettingsRow(
+                    Icons.Rounded.Router, r.name,
+                    listOfNotNull(r.model?.takeIf { it != r.name }, r.host, if (r.id == vm.activeId) "last used" else null).joinToString(" · "),
+                    tint = if (here) Good else cs.primary,
+                    enabled = !vm.busy && vm.loginWait == 0,
+                    onClick = { vm.tapSaved(r) },
+                    trailing = {
+                        IconButton(onClick = { toRemove = r }) { Icon(Icons.Rounded.Delete, "Remove ${r.name}", tint = cs.outline) }
+                    },
+                )
             }
-        }
-    }
+        },
+    )
     toRemove?.let { r ->
         AlertDialog(
             onDismissRequest = { toRemove = null },
+            icon = { Icon(Icons.Rounded.Delete, null) },
             title = { Text("Remove ${r.name}?") },
             text = { Text("Its saved login is deleted from this phone. The router itself is not changed.") },
             confirmButton = { TextButton(onClick = { vm.removeSaved(r); toRemove = null }) { Text("Remove", color = Bad) } },

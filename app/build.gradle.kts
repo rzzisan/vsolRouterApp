@@ -11,8 +11,8 @@ android {
         applicationId = "com.zyrotech.vsolrouter"
         minSdk = 26
         targetSdk = 34
-        versionCode = 9
-        versionName = "0.6.2"
+        versionCode = 11
+        versionName = "0.7.1"
     }
 
     buildTypes {

@@ -299,6 +299,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun refreshDashboard() = launchBusy { refreshDashboardInner() }
+
+    /** Home tab: status first, then devices and Wi-Fi for the summary tiles (those may fail quietly). */
+    fun refreshHome() = launchBusy {
+        refreshDashboardInner()
+        try { loadDevices() } catch (e: SessionExpiredException) { throw e } catch (e: LoginException) { throw e } catch (_: Exception) {}
+        try { loadWifi() } catch (e: SessionExpiredException) { throw e } catch (e: LoginException) { throw e } catch (_: Exception) {}
+    }
     private suspend fun refreshDashboardInner() {
         dashboard = requireApi().dashboard()
         saveSnapshot()
