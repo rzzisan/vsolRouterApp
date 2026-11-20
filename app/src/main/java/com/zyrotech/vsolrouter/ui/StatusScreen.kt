@@ -81,7 +81,15 @@ private fun rxLabel(dbm: Double?): String = when {
 
 @Composable
 fun StatusTab(vm: MainViewModel, nav: Nav) {
-    LaunchedEffect(Unit) { if (vm.dashboard.isEmpty()) vm.refreshHome() }
+    // Load the summaries once per visit, after any running request (e.g. the login itself) finishes;
+    // launchBusy() would drop a call made while busy.
+    var loaded by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(vm.busy) {
+        if (!loaded && !vm.busy) {
+            loaded = true
+            if (vm.dashboard.isEmpty() || vm.devices.isEmpty() || vm.wifi.isEmpty()) vm.refreshHome()
+        }
+    }
     val d = vm.dashboard
     var askReboot by remember { mutableStateOf(false) }
     var qr by remember { mutableStateOf<Pair<String, String>?>(null) }
