@@ -1,0 +1,7 @@
+-dontwarn org.jspecify.**
+-dontwarn okhttp3.internal.platform.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
+-keep class org.jsoup.** { *; }
+-dontwarn com.google.errorprone.annotations.**

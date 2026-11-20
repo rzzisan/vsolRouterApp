@@ -1,0 +1,10 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- router body -->
+    <path android:fillColor="#FFFFFF" android:pathData="M30,60h48a4,4 0,0 1,4 4v10a4,4 0,0 1,-4 4h-48a4,4 0,0 1,-4 -4v-10a4,4 0,0 1,4 -4z"/>
+    <path android:fillColor="#1565C0" android:pathData="M36,67h4v4h-4zM44,67h4v4h-4zM52,67h4v4h-4z"/>
+    <!-- wifi waves -->
+    <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="4" android:strokeLineCap="round"
+        android:pathData="M44,48a14,14 0,0 1,20 0M38,41a22,22 0,0 1,32 0M32,34a30,30 0,0 1,44 0"/>
+</vector>

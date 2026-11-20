@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">VSOL Router</string>
+    <string name="widget_desc">Router Rx power and connected devices</string>
+</resources>

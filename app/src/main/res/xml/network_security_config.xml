@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The router web panel only speaks plain HTTP on the LAN, so cleartext is allowed.
+     The app only ever talks to the router address the user enters. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
